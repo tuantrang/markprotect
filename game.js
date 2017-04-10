@@ -12,7 +12,12 @@ var MarkProtect = function(){
 
   this.tiles = [];
   this.target = {};
+
   this.playerNumber = 1;
+  this.players = [];
+
+  this.MAP_ROWS = 4;
+  this.MAP_COLUMNS = 4;
 
     // Start running mark & MarkProtect
   this.build();
@@ -25,33 +30,146 @@ MarkProtect.prototype = {
      * Build the scene and begin animating
      */
      build: function(){
-        //Draw the background
-        this.setupBg();
-        this.getAllPlayingTiles();
+        this.createPlayingTiles();
+        this.createPlayers(2);
+        this.createUndoButton();
         this.setUpCurrentPlayer();
-        this.addMP();
+        //this.addMP();
+      //  this.setMarkProtectLocation();
 
         requestAnimationFrame(this.tick.bind(this));
      },
-
-    /**
-     * Setup teh background in the center
-     */
-    setupBg: function(){
-        this.map = new Map(this, this.stage);
-    },
     /**
      * Get all playing tiles
     */
-    getAllPlayingTiles: function getAllPlayingTiles(){
-        this.tiles = this.map.getAllTiles();
+    createPlayingTiles: function getAllPlayingTiles(){
+        var cnt = 0;
+        for (var i=0; i < this.MAP_ROWS; i++){
+            for(var j=0; j < this.MAP_COLUMNS; j++){
+                var tile = new Territory();
+                tile.lineStyle(2,0x000000);
+                tile.beginFill(0xd3d3d3);
+                tile.drawRect(0,0,98,98);
+                tile.name = "Tile " + cnt;
+                cnt++;
+                tile.x = i * 100;
+                tile.y = j * 100;
+
+                this.tiles.push(tile);
+                this.stage.addChild(tile);
+            }
+        }
+    },
+    /**
+     * Get current player Tile
+     */
+    getPlayerTile: function(playerNum){
+        switch(playerNum){
+            case 1:
+                return this.players[0].Tile;
+                break;
+            case 2:
+                return this.players[1].Tile;
+                break;
+        }
+    },
+    /**
+     * Setup teh background in the center
+     */
+    createPlayers: function(numberOfPlayers){
+        for (var i = 1; i <= numberOfPlayers; i++){
+            var playerText = new PIXI.Text(i, {
+                font: 'bold 1px Arial',
+                fill: '#7da6de',
+                stroke: 'black',
+                strokeThickness: 3
+            });
+            playerText.anchor.x = 0.5;
+            playerText.anchor.y = 0.5;
+            playerText.position.x = 20;
+            playerText.position.y = 20;
+
+            var player = new PIXI.Graphics();
+            switch(i){
+                case 1:
+                    player.beginFill(0x63ff00);
+                    player.TintColor = 0x63ff00;
+                    player.x = 0;
+                    player.y = 5;
+                    player.Tile = this.tiles[0];
+                    break;
+                case 2:
+                    player.beginFill(0xdef424);
+                    player.TintColor = 0xdef424;
+                    player.x = 359;
+                    player.y = 5;
+                    player.Tile = this.tiles[12];
+                    break;
+                case 3:
+                    break;
+                case 4:
+                    break;
+            }
+            player.drawCircle(20,20,20);
+            player.endFill();
+            player.name = "Player " + i;
+            player.vx = 0;
+            player.vy = 0;
+
+            player.addChild(playerText);
+            this.stage.addChild(player);
+            this.players.push(player);
+        }
+    },
+    /**
+     * Get current player
+     */
+    getCurrentPlayer : function(playerNumber){
+        return this.players[playerNumber -1];
+    },
+    /**
+     * Create undo button
+     */
+    createUndoButton : function(){
+        var undo = new PIXI.Graphics();
+        undo.beginFill(0xe74c3c);
+        undo.drawCircle(200,200,40);
+        undo.endFill();
+
+        var undoText = new PIXI.Text('Undo', {
+            font: 'bold 1px Arial',
+            fill: '#7da6de',
+            stroke: 'black',
+            strokeThickness: 3
+        });
+        undoText.anchor.x = 0.5;
+        undoText.anchor.y = 0.5;
+        undoText.position.x = 200;
+        undoText.position.y = 200;
+
+        undo.addChild(undoText);
+        this.stage.addChild(undo);
+
+        this.undoButton = undo;
+        this.undoButton.interactive = true;
+        this.undoButton.buttonMode = true;
+        this.undoButton.click = function(){
+            this.previousActiveTile = this.currentTile.tint = "0xd3d3d3";
+            this.playerNumber++;
+            if (this.playerNumber > 2) this.playerNumber = 1;
+            this.currentTile = this.getPlayerTile(this.playerNumber);
+            this.currentPlayer = this.getCurrentPlayer(this.playerNumber);
+            this.movePlayer(this.currentPlayer);
+        }.bind(this);
+
     },
     /**
      * Setup current player
      */
      setUpCurrentPlayer: function(){
-        this.currentTile = this.map.getPlayerTile(1);
-        this.currentPlayer = this.map.getCurrentPlayer(this.playerNumber);
+        this.currentTile = this.getPlayerTile(this.playerNumber);
+        this.moveOverTile = this.currentTile;
+        this.currentPlayer = this.getCurrentPlayer(this.playerNumber);
         this.colorIndex = 0;
         this.colors = ['0xfafbf3', '0xd3d3d3'];
 
@@ -64,32 +182,19 @@ MarkProtect.prototype = {
 
         this.movePlayer(this.currentPlayer);
 
-        this.undoButton = this.map.getUndoButton();
-        this.undoButton.interactive = true;
-        this.undoButton.buttonMode = true;
-        this.undoButton.click = function(){
-            this.previousActiveTile = this.currentTile.tint = "0xd3d3d3";
-            this.playerNumber++;
-            if (this.playerNumber > 2) this.playerNumber = 1;
-            this.currentTile = this.map.getPlayerTile(this.playerNumber);
-            this.currentPlayer = this.map.getCurrentPlayer(this.playerNumber);
-            this.movePlayer(this.currentPlayer);
-        }.bind(this);
      },
     /**
      * Switch player
      */
     switchPlayer: function (){
-            this.previousActiveTile = this.currentTile.tint = "0xd3d3d3";
+            //this.previousActiveTile = this.currentTile.tint = "0xd3d3d3";
             this.playerNumber++;
             if (this.playerNumber > 2) this.playerNumber = 1;
-            this.currentTile = this.map.getPlayerTile(this.playerNumber);
-            this.currentPlayer = this.map.getCurrentPlayer(this.playerNumber);
+            this.currentTile = this.getPlayerTile(this.playerNumber);
+            this.moveOverTile = this.currentTile;
+            this.currentPlayer = this.getCurrentPlayer(this.playerNumber);
             this.movePlayer(this.currentPlayer);
-            this.mark.position.x = this.currentTile.x + 10;
-            this.mark.position.y = (this.currentTile.y + 100) - 20;
-            this.protect.position.x = this.currentTile.x + 90;
-            this.protect.position.y = this.currentTile.y + 80;
+           // this.setMarkProtectLocation();
      },
     createDragAndDropFor: function (target){
         target.interactive = true;
@@ -135,14 +240,14 @@ MarkProtect.prototype = {
         }
 
         // Top
-        if (container.height - 100 <= 0){
+        if (container.y - 100 <= 0){
             top = 0;
         } else {
-            top = container.height - 100;
+            top = container.y - 100;
         }
 
-        if(sprite.y < container.y){
-            sprite.y = container.y;
+        if(sprite.y < top){
+            sprite.y = top;
             collision = "top";
         }
 
@@ -162,36 +267,36 @@ MarkProtect.prototype = {
         if ((container.y + container.height) + 100 >= stage.height){
             bottom = stage.height;
         } else {
-            bottom = (container.y + container.height) + 100;
+            bottom = (container.y + container.height - sprite.height)  + 100;
         }
 
-        if(sprite.y + sprite.height > bottom){
-            sprite.y = bottom - sprite.height;
+        if(sprite.y  > bottom){
+            sprite.y = bottom;
             collision = "bottom";
         }
         // Check to see if we are out of our player Tile in x direction
-        if (sprite.x > (container.x + 100)){
+        //if (sprite.x > container.x  || sprite.x < (container.x + 100)){
             this.tiles.forEach(function(tile){
                 // Check if x is between this tile x ranges
                 if (sprite.x >= tile.position.x && sprite.x <= tile.position.x + 100){
                     if (sprite.y >= tile.position.y && sprite.y <= tile.position.y + 100){
-                        this.addDropTarget(this.stage, tile);
+                        this.addDropTarget(this.stage, tile, container);
                     }
                 }
             }.bind(this))
-        }
+        //}
 
         // Check to see if we are out of our player Tile in y direction
-        if (sprite.y > (container.y + 100)){
-            this.tiles.forEach(function(tile){
-                // Check if x is between this tile x ranges
-                if (sprite.x >= tile.position.x && sprite.x <= tile.position.x + 100){
-                    if (sprite.y >= tile.position.y && sprite.y <= tile.position.y + 100){
-                        this.addDropTarget(this.stage, tile);
-                    }
-                }
-            }.bind(this))
-        }
+        //if (sprite.y > container.y || sprite.y < (container.y + 100)){
+            // this.tiles.forEach(function(tile){
+            //     // Check if x is between this tile x ranges
+            //     if (sprite.x >= tile.position.x && sprite.x <= tile.position.x + 100){
+            //         if (sprite.y >= tile.position.y && sprite.y <= tile.position.y + 100){
+            //             this.addDropTarget(this.stage, tile, container);
+            //         }
+            //     }
+            // }.bind(this))
+        //}
 
         // Return the 'collision' value
         return collision;
@@ -222,15 +327,13 @@ MarkProtect.prototype = {
      */
     addMP : function(){
         var mark = new PIXI.Text('X', {
-        font: 'bold 1px Arial',
+        font: 'bold 30px Arial',
         fill: '#7da6de',
         stroke: 'black',
         strokeThickness: 3
         });
         mark.anchor.x = 0.5;
         mark.anchor.y = 0.5;
-        mark.position.x = this.currentTile.x + 10;
-        mark.position.y = (this.currentTile.y + 100) - 20;
         this.mark = mark;
         this.stage.addChild(mark);
 
@@ -242,16 +345,29 @@ MarkProtect.prototype = {
         });
         protect.anchor.x = 0.5;
         protect.anchor.y = 0.5;
-        protect.position.x = this.currentTile.x + 90;
-        protect.position.y = this.currentTile.y + 80;
         this.protect = protect;
         this.stage.addChild(protect);
     },
     /**
+     * Set Mark & Protect location
+     */
+    setMarkProtectLocation : function(){
+        this.mark.position.x = this.currentPlayer.Tile.x + 10;
+        this.mark.position.y = (this.currentPlayer.Tile.y + 100) - 20;
+        this.protect.position.x = this.currentPlayer.Tile.x + 90;
+        this.protect.position.y = this.currentPlayer.Tile.y + 80;
+    },
+    /**
      * Add drop target
      */
-    addDropTarget: function(stage, container){
-        if (stage.children.indexOf(this.target) < 0  && !container.isMarked){
+    addDropTarget: function(stage, container, currentContainer){
+        this.tiles.forEach(function(tile){
+            tile.hasTarget = false;
+        });
+
+        this.stage.removeChild(this.target);
+
+        if (!container.hasTarget && !container.isMarked){
             this.moveOverTile = container;
             this.target = null;
             var firstCircle = new PIXI.Graphics();
@@ -268,7 +384,7 @@ MarkProtect.prototype = {
             secondCircle.endFill();
             firstCircle.addChild(secondCircle);
             stage.addChild(firstCircle);
-            container.isMarked = true;
+            container.hasTarget = true;
             this.target = firstCircle;
         }
     },
@@ -280,7 +396,40 @@ MarkProtect.prototype = {
         var left = this.keyboard(37),
             up = this.keyboard(38),
             right = this.keyboard(39),
-            down = this.keyboard(40);
+            down = this.keyboard(40),
+            mKey = this.keyboard(77),
+            pKey = this.keyboard(80),
+            enter = this.keyboard(13)
+            ;
+
+        //M arrow key `press` method
+        mKey.press = function() {
+            this.moveOverTile.isMarked = true;
+            this.moveOverTile.markedBy = this.playerNumber;
+            var markText = new PIXI.Text('X', {
+                font: 'bold 40px Arial',
+                fill: '#7da6de'
+            });
+            markText.position.x = 50 - markText.width;
+            markText.position.y = 50 - markText.height;
+            this.moveOverTile.addChild(markText);
+            this.currentPlayer.Tile = this.moveOverTile;
+            this.currentPlayer.tint = this.currentPlayer.TintColor;
+
+            this.stage.removeChild(this.target);
+            this.switchPlayer();
+        }.bind(this);
+
+        //M key `release` method
+        mKey.release = function() {
+
+            //If the left arrow has been released, and the right arrow isn't down,
+            //and the explorer isn't moving vertically:
+            //Stop the explorer
+            if (!right.isDown && player.vy === 0) {
+            player.vx = 0;
+            }
+        };
 
         //Left arrow key `press` method
         left.press = function() {
@@ -393,8 +542,8 @@ MarkProtect.prototype = {
         if (this.hitTestRectangle(this.mark, this.target)) {
             //If mark touches the target then set the mark next to the target;
             this.mark.x = this.target.x + this.target.width + 8;
-            this.currentTile.isMarked = true;
-            this.currentTile.markedBy = this.playerNumber;
+            this.moveOverTile.isMarked = true;
+            this.moveOverTile.markedBy = this.playerNumber;
             var markText = new PIXI.Text('X', {
                 font: 'bold 40px Arial',
                 fill: '#7da6de'
@@ -402,6 +551,8 @@ MarkProtect.prototype = {
             markText.position.x = 50 - markText.width;
             markText.position.y = 50 - markText.height;
             this.moveOverTile.addChild(markText);
+            this.currentPlayer.Tile = this.moveOverTile;
+            this.currentPlayer.tint = this.currentPlayer.TintColor;
 
             this.stage.removeChild(this.target);
             this.switchPlayer();
